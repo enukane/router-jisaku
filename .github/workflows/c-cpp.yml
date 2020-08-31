@@ -1,0 +1,22 @@
+name: C/C++ CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  make_chap2_ltest:
+    
+    runs-on: ubuntu-latest
+    env:
+      working-directory: ./chap2-ltest
+    steps:
+      - uses: actions/checkout@master
+      - name: directory entory
+        run: ls -R
+        working-directory: ${{env.working-directory}}
+      - name: build
+        run: make
+        working-directory: ${{env.working-directory}}

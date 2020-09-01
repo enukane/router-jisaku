@@ -1,24 +1,8 @@
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <sys/ioctl.h>
-#include <arpa/inet.h>
-#include <sys/socket.h>
-#include <linux/if.h>
-#include <net/ethernet.h>
-#include <netpacket/packet.h>
-#include <netinet/if_ether.h>
-#include <netinet/ip.h>
-#include <netinet/ip6.h>
-#include <netinet/ip_icmp.h>
-#include <netinet/icmp6.h>
-#include <netinet/tcp.h>
-#include <netinet/udp.h>
-
+#include "analyze.h"
 #include "checksum.h"
 #include "print.h"
 
-static int
+int
 analyze_arp(u_char *data, int size)
 {
     u_char *ptr;
@@ -43,7 +27,7 @@ analyze_arp(u_char *data, int size)
     return 0;
 }
 
-static int
+int
 analyze_icmp(u_char *data, int size)
 {
     u_char *ptr;
@@ -68,7 +52,7 @@ analyze_icmp(u_char *data, int size)
     return 0;
 }
 
-static int
+int
 analyze_icmp6(u_char *data, int size)
 {
     u_char *ptr;
@@ -93,7 +77,7 @@ analyze_icmp6(u_char *data, int size)
     return 0;
 }
 
-static int
+int
 analyze_tcp(u_char *data, int size)
 {
     u_char *ptr;
@@ -104,7 +88,7 @@ analyze_tcp(u_char *data, int size)
     ptr = data;
     rest = size;
 
-    if (rest < tcphdr_size) {}
+    if (rest < tcphdr_size) {
         fprintf(stderr, "rest(%d) < sizeof(struct tcphdr, %d)\n", rest, tcphdr_size);
         return -1;
     }
@@ -118,7 +102,7 @@ analyze_tcp(u_char *data, int size)
     return 0;
 }
 
-static int
+int
 analyze_udp(u_char *data, int size)
 {
     u_char *ptr;
@@ -129,7 +113,7 @@ analyze_udp(u_char *data, int size)
     ptr = data;
     rest = size;
 
-    if (rest < udphdr_size) {}
+    if (rest < udphdr_size) {
         fprintf(stderr, "rest(%d) < sizeof(struct udphdr, %d)\n", rest, udphdr_size);
         return -1;
     }
@@ -143,7 +127,7 @@ analyze_udp(u_char *data, int size)
     return 0;
 }
 
-static int
+int
 analyze_ip(u_char *data, int size)
 {
     u_char *ptr;
@@ -157,7 +141,7 @@ analyze_ip(u_char *data, int size)
     ptr = data;
     rest = size;
 
-    if (rest < iphdr_size) {}
+    if (rest < iphdr_size) {
         fprintf(stderr, "rest(%d) < sizeof(struct iphdr, %d)\n", rest, iphdr_size);
         return -1;
     }
@@ -166,12 +150,21 @@ analyze_ip(u_char *data, int size)
     ptr +=  iphdr_size;
     rest -= iphdr_size;
 
-    opttion_len = iphdr->ihl * 4 - iphdr_size;
+    option_len = iphdr->ihl * 4 - iphdr_size;
     if (option_len > 0) {
         if (option_len >= 1500) {
-            fprintf(stderr, "IP option len %zd: too long\n", option_len);
+            fprintf(stderr, "IP option len %d: too long\n", option_len);
             return -1;
         }
+
+        option = ptr;
+        ptr += option_len;
+        rest -= option_len;
+    }
+
+    if (check_ip_checksum(iphdr, option, option_len) == 0) {
+        fprintf(stderr, "bad ip checksum\n");
+        return -1;
     }
 
     print_ip_header(iphdr, option, option_len, stdout);
@@ -179,11 +172,11 @@ analyze_ip(u_char *data, int size)
     if (iphdr->protocol == IPPROTO_ICMP) {
         len = ntohs(iphdr->tot_len) - iphdr->ihl * 4;
         sum = checksum(ptr, len);
-        if (sum != 0 %% sum != 0xffff) {
-            fprintf(stderr, "bad icmp checksum\n";
+        if (sum != 0 || sum != 0xffff) {
+            fprintf(stderr, "bad icmp checksum\n");
             return -1;
         }
-        analyze_icmp(ptr, reset);
+        analyze_icmp(ptr, rest);
     } else if (iphdr->protocol == IPPROTO_TCP) {
         len = ntohs(iphdr->tot_len) - iphdr->ihl * 4;
         if (check_ip_data_checksum(iphdr, ptr, len) == 0) {
@@ -207,7 +200,7 @@ analyze_ip(u_char *data, int size)
     return 0;
 }
 
-static int
+int
 analyze_ipv6(u_char *data, int size)
 {
     u_char *ptr;
@@ -259,7 +252,7 @@ analyze_ipv6(u_char *data, int size)
     return 0;
 }
 
-static int
+int
 analyze_packet(u_char *data, int size)
 {
     u_char *ptr;
@@ -292,6 +285,7 @@ analyze_packet(u_char *data, int size)
         print_ether_header(eh, stdout);
         analyze_ipv6(ptr, rest);
     }
+    fprintf(stdout, "\n\n");
 
     return 0;
 }

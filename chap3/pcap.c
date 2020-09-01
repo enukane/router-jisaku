@@ -1,13 +1,13 @@
-#include<stdio.h>
-#include<string.h>
-#include<unistd.h>
-#include<sys/ioctl.h>
-#include<arpa/inet.h>
-#include<sys/socket.h>
-#include<linux/if.h>
-#include<net/ethernet.h>
-#include<netinet/if_ether.h>
-#include<netinet/ip.h>
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/ioctl.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <linux/if.h>
+#include <net/ethernet.h>
+#include <netinet/if_ether.h>
+#include <netinet/ip.h>
 
 #include "analyze.h"
 
@@ -23,13 +23,13 @@ int init_raw_socket(char *device, int promisc, int ip_only)
     sock_type = SOCK_RAW;
     sock_protocol = ip_only ? htons(ETH_P_IP) : htons(ETH_P_ALL);
 
-    if ((sock = socket(PF_PACKET, SOCK_RAW, sock_protocol) < 0) {
+    if ((sock = socket(PF_PACKET, sock_type, sock_protocol)) < 0) {
         perror("socket");
         return -1;
     }
 
 
-    memset(&ifreq, 0, iszeof(struct ifreq));
+    memset(&ifreq, 0, sizeof(struct ifreq));
     strncpy(ifreq.ifr_name, device, sizeof(ifreq.ifr_name) - 1);
     if (ioctl(sock, SIOCGIFINDEX, &ifreq) < 0) {
         perror("ioctl");
@@ -41,7 +41,7 @@ int init_raw_socket(char *device, int promisc, int ip_only)
     sa.sll_protocol = htons(ip_only ? ETH_P_IP : ETH_P_ALL);
     sa.sll_ifindex = ifreq.ifr_ifindex;
     
-    if (bind(sock, (struct sockaddr *)&sa, sizeof(sa) < 0) {
+    if (bind(sock, (struct sockaddr *)&sa, sizeof(sa)) < 0) {
         perror("bind");
         close(sock);
         return -1;
@@ -50,14 +50,14 @@ int init_raw_socket(char *device, int promisc, int ip_only)
     if (promisc) {
         if (ioctl(sock, SIOCGIFFLAGS, &ifreq) < 0) {
             perror("ioctl");
-            close(soc);
+            close(sock);
             return -1;
         }
 
         ifreq.ifr_flags = ifreq.ifr_flags | IFF_PROMISC;
         if (ioctl(sock, SIOCSIFFLAGS, &ifreq) < 0) {
             perror("ioctl");
-            close(soc);
+            close(sock);
             return -1;
         }
     }
@@ -76,7 +76,7 @@ main(int argc, char **argv, char **envp)
         return 1;
     }
 
-    if ((sock = init_raw_socket(argv[1], 0, 0) == -1) {
+    if ((sock = init_raw_socket(argv[1], 0, 0) )== -1) {
         fprintf(stderr, "init_raw_socket failed ifname=%s\n", argv[1]);
         return -1;
     }

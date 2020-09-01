@@ -20,3 +20,39 @@ jobs:
       - name: build
         run: make
         working-directory: ${{env.working-directory}}
+  make_chap3_analyze:
+    runs-on: ubuntu-latest
+    env:
+      working-directory: ./chap3
+    steps:
+      - uses: actions/checkout@master
+      - name: directory entry
+        run: ls -R
+        working-directory: ${{env.working-directory}}
+      - name: build
+        run: make
+        working-directory: ${{env.working-directory}}
+  make_chap4_bridge:
+    runs-on: ubuntu-latest
+    env:
+      working-directory: ./chap4
+    steps:
+      - uses: actions/checkout@master
+      - name: directory entry
+        run: ls -R
+        working-directory: ${{env.working-directory}}
+      - name: build
+        run: make
+        working-directory: ${{env.working-directory}}
+#  make_chap5_router:
+#    runs-on: ubuntu-latest
+#    env:
+#      working-directory: ./chap5
+#    steps:
+#      - uses: actions/checkout@master
+#      - name: directory entry
+#        run: ls -R
+#        working-directory: ${{env.working-directory}}
+#      - name: build
+#        run: make
+#        working-directory: ${{env.working-directory}}

@@ -44,15 +44,15 @@ jobs:
       - name: build
         run: make
         working-directory: ${{env.working-directory}}
-#  make_chap5_router:
-#    runs-on: ubuntu-latest
-#    env:
-#      working-directory: ./chap5
-#    steps:
-#      - uses: actions/checkout@master
-#      - name: directory entry
-#        run: ls -R
-#        working-directory: ${{env.working-directory}}
-#      - name: build
-#        run: make
-#        working-directory: ${{env.working-directory}}
+  make_chap5_router:
+    runs-on: ubuntu-latest
+    env:
+      working-directory: ./chap5
+    steps:
+      - uses: actions/checkout@master
+      - name: directory entry
+        run: ls -R
+        working-directory: ${{env.working-directory}}
+      - name: build
+        run: make
+        working-directory: ${{env.working-directory}}

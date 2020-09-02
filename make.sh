@@ -13,3 +13,6 @@ make
 
 cd ~/vagrant/chap4
 make
+
+cd ~/vagrant/chap5
+make

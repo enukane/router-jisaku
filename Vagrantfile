@@ -67,14 +67,28 @@ Vagrant.configure("2") do |config|
   #   apt-get update
   #   apt-get install -y apache2
   # SHELL
-  config.vm.define :server1 do |node|
+  config.vm.define :router1 do |node|
     node.vm.box = "ubuntu/bionic64"
-    node.vm.network :public_network
+    node.vm.network :private_network, ip: "192.168.0.200", virtualbox__intnet: "client1"
+    node.vm.network :private_network, ip: "10.101.0.254"
     node.vm.provision "shell", inline: <<-SHELL
-      hostanem router1
+      hostname router1
 
       apt install -y gcc make
 
     SHELL
   end
+
+  config.vm.define :server1 do |node|
+    node.vm.box = "ubuntu/bionic64"
+    node.vm.network :private_network, ip: "192.168.0.254", virtualbox__intnet: "client1"
+    node.vm.provision "shell", inline: <<-SHELL
+      hostname server1
+
+      ip route add 10.101.0.0/24 via 192.168.0.200
+
+    SHELL
+  end
+
+
 end

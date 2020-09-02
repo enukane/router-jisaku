@@ -1,6 +1,8 @@
 #ifndef _CHECKSUM_H_
 #define _CHECKSUM_H_
 
+#include "router.h"
+
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>

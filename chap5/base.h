@@ -1,10 +1,6 @@
 #ifndef _BASE_H_
 #define _BASE_H_
 
-#include <stdint.h>
-#include <pthread.h>
-#include <linux/in.h>
-
 #define MACADDRLEN (6)
 
 typedef struct {

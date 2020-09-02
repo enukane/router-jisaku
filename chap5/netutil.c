@@ -89,6 +89,29 @@ inet_addr_t2str(in_addr_t addr, char *buf, socklen_t size)
 }
 
 int
+print_ip_header(struct iphdr *iphdr, FILE *fp)
+{
+    char buf[80];
+
+    fprintf(fp, "ip------------------------------\n");
+#define print_ip_elm(name, type) do { fprintf(fp, #name "=" type "\n", iphdr->name); } while (0)
+    print_ip_elm(version, "%u");
+    print_ip_elm(ihl, "%u");
+    print_ip_elm(tos, "%x");
+    print_ip_elm(tot_len, "%u");
+    print_ip_elm(id, "%u");
+    fprintf(fp, "frag_off=%x, %u\n", (ntohs(iphdr->frag_off) >> 13) & 0x07, ntohs(iphdr->frag_off) & 0x1FFF);
+    print_ip_elm(ttl, "%u");
+    print_ip_elm(protocol, "%u");
+    print_ip_elm(check, "%x");
+    fprintf(fp, "saddr=%s\n", inet_addr_t2str(iphdr->saddr, buf, sizeof(buf)));
+    fprintf(fp, "daddr=%s\n", inet_addr_t2str(iphdr->daddr, buf, sizeof(buf)));
+
+    return 0;
+#undef print_ip_elm
+}
+
+int
 print_ether_header(struct ether_header *eh, FILE *fp)
 {
     char buf[80];
@@ -130,7 +153,7 @@ get_device_info(char *device, u_char hwaddr[MACADDRLEN], struct in_addr *uaddr, 
     }
 
     memset(&ifreq, 0, sizeof(ifreq));
-    strncpy(ifreq.ifr_name, device, sizeof(ifreq.ifr_name) - 1);
+    strncpy(ifreq.ifr_name, device, sizeof(ifreq.ifr_name));
     
     if (ioctl(sock, SIOCGIFHWADDR, &ifreq) == -1) {
         perror("ioctl");
@@ -139,10 +162,11 @@ get_device_info(char *device, u_char hwaddr[MACADDRLEN], struct in_addr *uaddr, 
     } 
     p = (u_char *)&ifreq.ifr_hwaddr.sa_data;
     memcpy(hwaddr, p, MACADDRLEN);
+    printf("%u %s : device=%s, ifr_name=%s, addr=0x%02x\n", __LINE__, __func__, device, ifreq.ifr_name, hwaddr[5]);
 
     if (ioctl(sock, SIOCGIFADDR, &ifreq) == -1) {
         perror("ioctl");
-        close(soc);
+        close(sock);
         return -1;
     }
 
@@ -157,7 +181,7 @@ get_device_info(char *device, u_char hwaddr[MACADDRLEN], struct in_addr *uaddr, 
 
     if (ioctl(sock, SIOCGIFNETMASK, &ifreq) == -1) {
         perror("ioctl");
-        close(soc);
+        close(sock);
         return -1;
     }
     memcpy(&addr, &ifreq.ifr_addr, sizeof(struct sockaddr_in));
@@ -166,6 +190,58 @@ get_device_info(char *device, u_char hwaddr[MACADDRLEN], struct in_addr *uaddr, 
     subnet->s_addr = ((uaddr->s_addr) & (mask->s_addr));
 
     close(sock);
+
+    return 0;
+}
+
+int
+send_arp_request_b(int sock, in_addr_t target_ip, u_char target_mac[MACADDRLEN], in_addr_t my_ip, u_char my_mac[MACADDRLEN])
+{
+    packet_arp arp;
+    int total;
+    u_char *p;
+    u_char buf[sizeof(struct ether_header) + sizeof(struct ether_arp)];
+    union {
+        u_long l;
+        u_char c[4];
+    } lc;
+    int i;
+
+    arp.arp.arp_hrd = htons(ARPHRD_ETHER);
+    arp.arp.arp_pro = htons(ETHERTYPE_IP);
+    arp.arp.arp_hln = 6;
+    arp.arp.arp_pln = 4;
+    arp.arp.arp_op = htons(ARPOP_REQUEST);
+
+    for (i = 0; i < MACADDRLEN; i++) {
+        arp.arp.arp_sha[i] = my_mac[i];
+    }
+    for (i = 0; i < MACADDRLEN; i++) {
+        arp.arp.arp_tha[i] = 0;
+    }
+
+    lc.l = my_ip;
+    for (i = 0; i < 4; i++) {
+        arp.arp.arp_tpa[i] = lc.c[i];
+    }
+
+    for (i = 0; i < MACADDRLEN; i++) {
+        arp.eh.ether_dhost[i] = target_mac[i];
+        arp.eh.ether_shost[i] = my_mac[i];
+    }
+
+    arp.eh.ether_type = htons(ETHERTYPE_ARP);
+
+    memset(buf, 0, sizeof(buf));
+    p = buf;
+
+    memcpy(p, &arp.eh, sizeof(struct ether_header));
+    p += sizeof(struct ether_header);
+    memcpy(p, &arp.arp, sizeof(struct ether_arp));
+    p += sizeof(struct ether_arp);
+    total = p - buf;
+
+    write(sock, buf, total);
 
     return 0;
 }
